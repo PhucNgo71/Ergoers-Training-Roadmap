@@ -79,7 +79,7 @@ function productCostingTool(){
     :margin>=100?`<p class="costing-warning"><strong>Margin must be below 100%.</strong> Check the target before quoting.</p>`
     :`<p class="costing-ok">Target margin is at or above the 12% hard floor.</p>`;
   return `<section id="product-costing-tool" class="academy-costing-tool">
-    <div class="costing-tool-head"><div><span class="costing-kicker">PRACTICAL COSTING TOOL</span><h2>Product landed cost calculator</h2><p>Build a multi-product estimate for product, freight, import tax, delivery and installation. Use one currency consistently across the quotation.</p></div><div class="costing-rule"><strong>12%</strong><span>minimum gross-margin floor</span></div></div>
+    <div class="costing-tool-head"><div><span class="costing-kicker">PRACTICAL COSTING TOOL</span><h2>Product target price calculator</h2><p>Build a multi-product estimate for product, freight, import tax, delivery and installation. Use one currency consistently across the quotation.</p></div><div class="costing-rule"><strong>12%</strong><span>minimum gross-margin floor</span></div></div>
     <div class="costing-control"><label><span>Target gross margin %</span><input type="number" min="0" max="99.99" step="0.1" value="${productCostingEscape(productCostingTargetMargin)}" oninput="productCostingSetMargin(this.value)"></label><button type="button" onclick="productCostingRender()">Calculate costing</button>${marginWarning}</div>
     <div class="costing-lines">${productCostingLines.map((line,index)=>productCostingLine(line,index,rows[index])).join('')}</div>
     <div class="costing-actions"><button class="secondary" type="button" onclick="productCostingAdd()">+ Add another product</button></div>
