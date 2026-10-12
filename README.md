@@ -9,7 +9,7 @@ Live academy: https://ergoers-training-academy.phuc-ngovh.chatgpt.site/
 1. Corporate Culture
 2. Operation Process, including email communication
 3. General Market
-4. Costing, with the original daily Excel template
+4. Costing, with a multi-product landed-cost calculator and the original daily Excel template
 5. Product Training, including Milliken carpet tiles
 6. Introductory Project Management
 
