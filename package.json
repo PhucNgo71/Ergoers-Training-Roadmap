@@ -4,6 +4,6 @@
   "private": true,
   "description": "English training and assessments for Ergoers",
   "scripts": {
-    "test": "node check-system.cjs && node check-costing-model.cjs && node check-product-progress.cjs"
+    "test": "node check-system.cjs && node check-costing-model.cjs && node check-product-progress.cjs && node check-access.cjs"
   }
 }

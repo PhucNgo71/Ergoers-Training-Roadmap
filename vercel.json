@@ -1,5 +1,5 @@
 {
-  "framework": null,
-  "buildCommand": "npm test",
-  "outputDirectory": "web"
+  "version": 2,
+  "builds": [{"src": "api/access.js", "use": "@vercel/node", "config": {"includeFiles": ["web/**"]}}],
+  "routes": [{"src": "/(.*)", "dest": "/api/access.js"}]
 }
