@@ -3,5 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "description": "English training and assessments for Ergoers",
-  "scripts": {"test": "node check-system.cjs"}
+  "scripts": {
+    "test": "node check-system.cjs && node check-costing-model.cjs"
+  }
 }
