@@ -1,17 +1,21 @@
-# Email access
+# Company-issued employee codes
 
-All Vercel paths route through `api/access.js`. No academy assets are published as unprotected static output. Without Supabase environment variables, the entry screen appears and access stays locked. The blurred background contains generic course titles only, not lesson text, questions or learner records.
+Login now uses an individual company code plus an assigned company email. It does not send email, use SMTP, or verify email ownership. Only exact ergovn.com and tfw.space accounts in the private company configuration are allowed. Existing Supabase signup confirmation-link settings are retained, but this login does not call Supabase Auth.
 
-## Activate
+## Issue locally
 
-1. Create a Supabase project; enable email sign-in and keep email confirmation enabled.
-2. Configure a production SMTP provider in Supabase Authentication. The default Supabase sender is limited to project team addresses.
-3. Change the Magic Link email template to show `{{ .Token }}` as the verification code. Use an English subject such as “Your Ergo Academy sign-in code”. Configure a short OTP expiry and the provider's rate limits/CAPTCHA protection appropriate to usage.
-4. Add `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` to Vercel Production environment variables and redeploy. No service-role key is needed. Keep SMTP credentials in Supabase, never in GitHub.
-5. Test one real mailbox from each allowed domain, an outside-domain address, wrong/expired codes, direct lesson/file URLs, session expiry and sign-out. Real delivery cannot be tested before this setup exists.
+Run: node issue-company-code.cjs employee@ergovn.com "Full Name"
 
-The server checks exact email domains at code request, code verification and every protected request. Supabase validates sessions remotely; only verified allowed-domain users are served files. Sessions use Secure, HttpOnly, SameSite=Strict cookies and expire within one hour; then sign in again. No refresh tokens are stored. Existing academy progress remains browser-local and shared among users of that browser; this change does not implement per-user private records or team storage.
+The tool creates a private employee code file and private-access/company-access.json. Codes have 120 bits of random entropy and expire after 90 days. They are case-sensitive; display hyphens and spaces are ignored. Never commit either generated file. The configuration holds salted scrypt hashes and a session signing key; the clear code appears only in the employee file.
 
-This protects the deployed academy, not files previously downloaded or public GitHub source. The repository remains public as previously requested. To make the training source private too, change repository visibility separately.
+## Activate in Vercel
 
-References: https://supabase.com/docs/guides/auth/auth-email-passwordless and https://supabase.com/docs/guides/auth/auth-smtp
+Add a Production SECRET environment variable named COMPANY_ACCESS_CONFIG. Paste the complete contents of private-access/company-access.json. Save and redeploy. The academy stays locked until this variable is valid. The existing SUPABASE variables are not used for company-code access.
+
+The human administrator must perform credential entry in the browser. Distribute each employee's code privately. Do not send codes to the public repository or public issue tracker. Sessions expire after one hour. Updating a record to revoked:true or removing its entry blocks its code and existing sessions after the updated configuration is deployed. Rotating an employee record ID invalidates previous sessions. Rotating the signing key invalidates all sessions. Configuration changes require redeployment.
+
+This initial roster is managed in Vercel, not through a public admin screen. It supports up to 1,000 employee records subject to Vercel's environment-size limits. There is no centralized failed-attempt counter; use strong generated codes and Vercel Firewall for additional traffic controls.
+
+Learning records are still stored in the browser and are not isolated per employee on shared devices. This change controls access to the site; it does not add shared progress storage. Public GitHub source and previously downloaded copies remain outside the login gate.
+
+Validation: node check-access.cjs. The tests use generated fictional credentials and cover wrong email/code, signatures, expiry, revocation, CSRF and asset protection.

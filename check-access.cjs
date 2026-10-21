@@ -1,19 +1,17 @@
-const assert=require('node:assert/strict'),gate=require('./api/access');
-async function request(url,method='GET',body=null,cookie=''){const headers={host:'academy.test',origin:'https://academy.test',cookie};const res={headers:{},setHeader(k,v){this.headers[k]=v},end(v){this.body=String(v||'')}};await gate({url,method,body,headers},res);return res;}
+const assert=require('node:assert/strict'),crypto=require('node:crypto'),gate=require('./api/access'),company=require('./api/company-access');
+async function request(url,method='GET',body=null,cookie='',origin='https://academy.test'){const res={headers:{},setHeader(k,v){this.headers[k]=v},end(v){this.body=String(v||'')}};await gate({url,method,body,headers:{host:'academy.test',origin,cookie}},res);return res;}
 (async()=>{
-delete process.env.SUPABASE_URL;delete process.env.SUPABASE_PUBLISHABLE_KEY;
-for(const url of ['/','/index.html','/product-content.js','/costing.html','/web/index.html','/api/access.js']){const r=await request(url);assert.match(r.body,/Email sign-in is being connected/);assert.ok(!r.body.includes('const modules='));assert.match(r.headers['Cache-Control'],/no-store/);}
-for(const e of ['a@ergovn.com','a@tfw.space','A@ERGOVN.COM'])assert.equal(gate.allowed(e),true);
-for(const e of ['a@gmail.com','a@evilergovn.com','a@ergovn.com.evil','a@sub.tfw.space','a@@tfw.space'])assert.equal(gate.allowed(e),false);
-assert.equal((await request('/auth/send','POST',{email:'a@ergovn.com'})).statusCode,503);
-process.env.SUPABASE_URL='https://project.supabase.co';process.env.SUPABASE_PUBLISHABLE_KEY='test-only';
-let calls=[];global.fetch=async(url,opts)=>{calls.push({url,opts});return {ok:true,status:200,json:async()=>url.endsWith('/user')?{email:'a@ergovn.com',email_confirmed_at:'2026-01-01'}:{access_token:'test-token',expires_in:3600,user:{email:'a@ergovn.com',email_confirmed_at:'2026-01-01'}}};};
-assert.equal((await request('/auth/send','POST',{email:'a@gmail.com'})).statusCode,403);assert.equal(calls.length,0);
-assert.equal((await request('/auth/send','POST',{email:'a@ergovn.com'})).statusCode,200);
-const verified=await request('/auth/verify','POST',{email:'a@ergovn.com',token:'123456'});assert.equal(verified.statusCode,200);assert.match(verified.headers['Set-Cookie'],/HttpOnly; Secure; SameSite=Strict/);
-const content=await request('/','GET',null,'__Host-ergo_access=test-token');assert.match(content.body,/const modules=/);assert.match(content.body,/Sign out/);
-global.fetch=async()=>({ok:true,json:async()=>({email:'a@gmail.com',email_confirmed_at:'2026-01-01'})});assert.match((await request('/product-content.js','GET',null,'__Host-ergo_access=test-token')).body,/Your next step starts here/);
-global.fetch=async()=>{throw Error('network down')};assert.match((await request('/','GET',null,'__Host-ergo_access=forged')).body,/Your next step starts here/);
-const config=require('./vercel.json');assert.equal(config.builds.length,1);assert.equal(config.routes[0].src,'/(.*)');assert.equal(config.routes[0].dest,'/api/access.js');
-console.log('PASSED: closed without configuration, exact domains, server verification, protected assets, cookie flags and upstream failure denial. Real email delivery pending setup.');
+delete process.env.COMPANY_ACCESS_CONFIG;
+for(const url of ['/','/product-content.js','/costing.html','/web/index.html','/api/company-access.js']){const r=await request(url);assert.match(r.body,/Company-code access is awaiting activation/);assert.ok(!r.body.includes('const modules='));assert.match(r.headers['Cache-Control'],/no-store/);}
+assert.equal((await request('/auth/company-code','POST',{email:'a@ergovn.com',code:'test'})).statusCode,503);
+const code=crypto.randomBytes(15).toString('hex'),salt=crypto.randomBytes(16).toString('hex');const record={id:crypto.randomBytes(16).toString('hex'),email:'a@ergovn.com',name:'Test User',salt,hash:crypto.scryptSync(code,salt,32).toString('hex'),expiresAt:new Date(Date.now()+86400000).toISOString()};const c={version:1,signingKey:crypto.randomBytes(32).toString('hex'),records:[record]};process.env.COMPANY_ACCESS_CONFIG=JSON.stringify(c);assert.ok(company.configuration());
+assert.equal(await company.verify(c,'a@gmail.com',code),null);assert.equal(await company.verify(c,'b@ergovn.com',code),null);assert.equal(await company.verify(c,'a@ergovn.com','wrong'),null);assert.equal((await company.verify(c,'A@ERGOVN.COM',code)).email,record.email);
+const verified=await request('/auth/company-code','POST',{email:record.email,code});assert.equal(verified.statusCode,200);assert.match(verified.headers['Set-Cookie'],/HttpOnly; Secure; SameSite=Strict/);const cookie=verified.headers['Set-Cookie'].split(';')[0];assert.match((await request('/','GET',null,cookie)).body,/const modules=/);assert.match((await request('/product-content.js','GET',null,cookie)).headers['Content-Type'],/javascript/);
+const token=company.issue(c,record);assert.equal(company.session(c,token).email,record.email);assert.equal(company.session(c,token+'x'),null);assert.equal(company.session(c,token,Date.now()+3601000),null);
+assert.equal((await request('/auth/company-code','POST',{email:record.email,code},'','https://evil.test')).statusCode,403);
+c.records[0].revoked=true;assert.equal(company.session(c,token),null);assert.equal(await company.verify(c,record.email,code),null);process.env.COMPANY_ACCESS_CONFIG=JSON.stringify(c);assert.ok(!(await request('/','GET',null,cookie)).body.includes('const modules='));
+c.records[0].revoked=false;c.records[0].expiresAt=new Date(Date.now()-1).toISOString();assert.equal(await company.verify(c,record.email,code),null);assert.equal(company.session(c,token),null);
+c.signingKey='short';process.env.COMPANY_ACCESS_CONFIG=JSON.stringify(c);assert.equal(company.configuration(),null);
+assert.equal((await request('/auth/logout','POST')).statusCode,200);assert.equal((await request('/auth/send','POST')).statusCode,404);
+console.log('PASSED: company email/code matching, invalid/wrong-user codes, revocation, expiry, cookie signatures, forged/expired sessions, CSRF, locked assets and disabled email delivery.');
 })().catch(e=>{console.error(e);process.exitCode=1});
