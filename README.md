@@ -45,7 +45,7 @@ The checks cover the four-course eligibility gate, random questions drawn only f
 
 ## Records and content
 
-Learners, progress, attempts and local content edits are stored in the browser's local storage. Export backups from Progress. This pilot has no shared HR database, identity-bound learner records, protected instructor roles or secure exam delivery. Public visitors can view content and question-bank source.
+Learners, progress, attempts and local content edits are stored in the browser's local storage. Export backups from Progress. On Vercel, learners sign in with an existing Ergo account and an email code through the same Supabase Auth project as Ergo POs System and Ergovn PM. The access gate checks the session before serving Academy pages and assets. The Vercel deployment needs `SUPABASE_URL=https://dlfgepzuxmkjkjwyrrsp.supabase.co` and `SUPABASE_PUBLISHABLE_KEY`. Learner records remain local to the browser. The local static server skips the Vercel access gate for development.
 
 Progress Overview reports all available learners and attempts, supports CSV exports and combines current learner backups without replacing lessons or existing records. Cross-device records do not synchronize automatically.
 
