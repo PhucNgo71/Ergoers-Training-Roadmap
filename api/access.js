@@ -1,5 +1,6 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
+const handleHub = require('./hub-auth.cjs');
 const project='https://dlfgepzuxmkjkjwyrrsp.supabase.co';
 const allowed = email => typeof email === 'string' && email.length<=254 && /^[^\s@]+@(ergovn\.com|tfw\.space)$/i.test(email);
 const root = path.resolve(__dirname, '../web');
@@ -22,7 +23,14 @@ async function auth(endpoint,body,token){const base=project;const key=process.en
 async function handler(req,res){
 res.setHeader('Cache-Control','private, no-store, max-age=0');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('X-Frame-Options','DENY');res.setHeader('Referrer-Policy','same-origin');
 const ready=process.env.SUPABASE_URL===project&&!!process.env.SUPABASE_PUBLISHABLE_KEY;
-let pathname;try{pathname=decodeURIComponent(new URL(req.url,'https://academy.invalid').pathname);}catch{return json(res,400,{error:'Invalid path.'});}
+let url,pathname;try{url=new URL(req.url,'https://academy.invalid');pathname=decodeURIComponent(url.pathname);}catch{return json(res,400,{error:'Invalid path.'});}
+if (pathname === '/auth/hub' || pathname === '/auth/hub/callback') {
+ return handleHub(req,res,url,async (token,id)=>{
+  if (!ready) return false;
+  const result=await auth('user',null,token);
+  return result.ok&&result.data?.id===id&&authorized(result.data);
+ },sessionCookie);
+}
 if(req.method==='POST'){
  const origin=req.headers.origin;const host=req.headers.host;
  if(!origin||origin!=='https://'+host&&!(process.env.NODE_ENV==='test'&&origin==='http://'+host))return json(res,403,{error:'Request not allowed.'});
